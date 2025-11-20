@@ -1,14 +1,18 @@
+from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
 from .lynk_co_sensor import LynkCoSensor
+from .lynk_co_statistics_sensor import LynkCoStatisticsSensor
 
 
 def create_sensors(coordinator, vin):
     sensors = [
-        LynkCoSensor(
+        LynkCoStatisticsSensor(
             coordinator,
             vin,
             "Lynk & Co 12V Battery",
             "vehicle_record.battery.chargeLevel",
             "%",
+            device_class=SensorDeviceClass.BATTERY,
+            state_class=SensorStateClass.MEASUREMENT,
         ),
         LynkCoSensor(
             coordinator,
@@ -34,11 +38,14 @@ def create_sensors(coordinator, vin):
             "Lynk & Co 12V Battery Energy level",
             "vehicle_record.battery.energyLevel",
         ),
-        LynkCoSensor(
+        LynkCoStatisticsSensor(
             coordinator,
             vin,
             "Lynk & Co 12V Battery Voltage",
             "vehicle_record.battery.voltage",
+            "V",
+            device_class=SensorDeviceClass.VOLTAGE,
+            state_class=SensorStateClass.MEASUREMENT,
         ),
     ]
     return sensors

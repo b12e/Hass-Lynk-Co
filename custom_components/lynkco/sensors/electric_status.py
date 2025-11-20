@@ -1,4 +1,7 @@
+from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
+from homeassistant.const import UnitOfLength, UnitOfTime
 from .lynk_co_sensor import LynkCoSensor
+from .lynk_co_statistics_sensor import LynkCoStatisticsSensor
 
 
 def create_sensors(coordinator, vin):
@@ -9,26 +12,32 @@ def create_sensors(coordinator, vin):
             "Lynk & Co Battery Updated",
             "vehicle_record.electricStatus.vehicleUpdatedAt",
         ),
-        LynkCoSensor(
+        LynkCoStatisticsSensor(
             coordinator,
             vin,
             "Lynk & Co Time until charged",
             "vehicle_record.electricStatus.timeToFullyCharged",
-            "minutes",
+            UnitOfTime.MINUTES,
+            device_class=SensorDeviceClass.DURATION,
+            state_class=SensorStateClass.MEASUREMENT,
         ),
-        LynkCoSensor(
+        LynkCoStatisticsSensor(
             coordinator,
             vin,
             "Lynk & Co Battery",
             "vehicle_record.electricStatus.chargeLevel",
             "%",
+            device_class=SensorDeviceClass.BATTERY,
+            state_class=SensorStateClass.MEASUREMENT,
         ),
-        LynkCoSensor(
+        LynkCoStatisticsSensor(
             coordinator,
             vin,
             "Lynk & Co Battery distance",
             "vehicle_record.electricStatus.distanceToEmptyOnBatteryOnly",
-            "km",
+            UnitOfLength.KILOMETERS,
+            device_class=SensorDeviceClass.DISTANCE,
+            state_class=SensorStateClass.MEASUREMENT,
         ),
     ]
     return sensors
