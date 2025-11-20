@@ -17,6 +17,11 @@ CONFIG_SCAN_INTERVAL_KEY = "scan_interval"
 CONFIG_DARK_HOURS_START = "dark_hours_start"
 CONFIG_DARK_HOURS_END = "dark_hours_end"
 
+# Login method keys
+CONFIG_LOGIN_METHOD_DIRECT = "direct_login"
+CONFIG_LOGIN_METHOD_REDIRECT = "redirect_login"
+CONFIG_REDIRECT_URI_KEY = "redirect_uri"
+
 # Hass data constants
 DATA_EXPECTED_STATE = "expected_state_monitor"
 DATA_IS_FORCE_UPDATE = "is_force_update"
