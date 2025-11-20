@@ -350,9 +350,11 @@ async def getRedirect(tx_value, page_view_id, referer_url, session):
         "sec-fetch-dest": "document",
         "sec-fetch-mode": "navigate",
         "accept-language": "en-GB,en;q=0.9",
-        "referer": referer_url,
         "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS like Mac OS X) AppleWebKit (KHTML, like Gecko) Version Mobile Safari",
     }
+    # Only add referer if it's not None
+    if referer_url:
+        headers["referer"] = referer_url
 
     cookie = session.cookie_jar.filter_cookies("https://login.lynkco.com").get(
         "x-ms-cpim-csrf"
@@ -425,7 +427,7 @@ async def getTokens(code, code_verifier, session):
 async def get_user_vins(ccc_token: str, user_id: str) -> list[str]:
     """Retrieve VINs associated with a user ID using the CCC token."""
 
-    url = f"{user_lifecycle_base_url}{user_id}"
+    url = f"{user_lifecycle_base_url}{user_id}/activevehicles"
     headers = {
         "Authorization": f"Bearer {ccc_token}",
         "Content-Type": "application/json",
@@ -436,11 +438,11 @@ async def get_user_vins(ccc_token: str, user_id: str) -> list[str]:
             async with session.get(url, headers=headers, ssl=False) as response:
                 if response.status == 200:
                     data = await response.json()
-                    # Extract VINs from the response
+                    # Extract VINs from the response (roles array)
                     vins = []
-                    vehicles = data.get("vehicles", [])
-                    for vehicle in vehicles:
-                        vin = vehicle.get("vin")
+                    roles = data.get("roles", [])
+                    for role in roles:
+                        vin = role.get("vin")
                         if vin:
                             vins.append(vin)
                     _LOGGER.debug(f"Found {len(vins)} VINs for user {user_id}")
