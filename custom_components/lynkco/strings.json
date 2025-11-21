@@ -54,6 +54,13 @@
   "options": {
     "step": {
       "init": {
+        "title": "Lynk & Co Options",
+        "menu_options": {
+          "settings": "Integration Settings",
+          "discover_vehicles": "Discover Vehicles"
+        }
+      },
+      "settings": {
         "title": "Lynk & Co Integration Settings",
         "description": "Configure your Lynk & Co integration settings.",
         "data": {
@@ -62,7 +69,20 @@
           "dark_hours_start": "Start of dark hours interval (not automatic updates during interval)",
           "dark_hours_end": "End of dark hours interval (not automatic updates during interval)"
         }
+      },
+      "discover_vehicles": {
+        "title": "Discover Vehicles",
+        "description": "Found {vin_count} vehicle(s). Select a VIN to use:",
+        "data": {
+          "vin": "Vehicle VIN"
+        }
       }
+    },
+    "abort": {
+      "no_tokens": "No authentication tokens found. Please re-add the integration.",
+      "token_refresh_failed": "Failed to refresh authentication tokens. Please re-authenticate.",
+      "missing_user_info": "Could not retrieve user information from tokens.",
+      "no_vins_found": "No vehicles found for your account. Please ensure your vehicle is registered with Lynk & Co."
     }
   }
 }

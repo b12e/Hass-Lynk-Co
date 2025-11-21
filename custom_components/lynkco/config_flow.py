@@ -97,31 +97,37 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # Decode User ID from ID Token (the JWT payload)
         claims = decode_jwt_token(id_token)
+        _LOGGER.debug(f"JWT claims: {claims}")
         user_id = claims.get("snowflakeId")
+        _LOGGER.debug(f"Extracted user_id: {user_id}")
+        _LOGGER.debug(f"CCC token exists: {ccc_token is not None}")
 
         # Retrieve VINs by querying the API
         vins = await get_user_vins(ccc_token, user_id) if ccc_token and user_id else []
+        _LOGGER.debug(f"Retrieved VINs: {vins}")
         # For simplicity, we take the first VIN
         vin = vins[0] if vins else None
         if not vin:
-            _LOGGER.error("No VINs found for the user")
-            return self.async_abort(reason="no_vins_found")
+            _LOGGER.warning("No VINs found for the user - creating entry without VIN. You can discover VINs later in the integration settings.")
 
         if hasattr(self, "_reauth_entry"):
             # Update the existing config entry
+            entry_data = {CONFIG_VIN_KEY: vin} if vin else {}
             self.hass.config_entries.async_update_entry(
                 self._reauth_entry,
-                data={CONFIG_VIN_KEY: vin},
+                data=entry_data,
             )
             await self.hass.config_entries.async_reload(self._reauth_entry.entry_id)
             return self.async_abort(reason="reauth_successful")
 
-        # Create new entry
+        # Create new entry (even without VIN)
+        entry_data = {CONFIG_VIN_KEY: vin} if vin else {}
+        title = f"Lynk & Co ({vin})" if vin else "Lynk & Co (No VIN)"
         return self.async_create_entry(
-            title="Lynk & Co",
-            data={CONFIG_VIN_KEY: vin},
+            title=title,
+            data=entry_data,
             description_placeholders={
-                "additional_configuration": "Please use the configuration to enable experimental features."
+                "additional_configuration": "Please use the configuration to discover vehicles and enable experimental features." if not vin else "Please use the configuration to enable experimental features."
             },
         )
 
@@ -263,6 +269,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 class OptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None) -> FlowResult:
+        """Manage the options with a menu."""
+        return self.async_show_menu(
+            step_id="init",
+            menu_options=["settings", "discover_vehicles"],
+        )
+
+    async def async_step_settings(self, user_input=None) -> FlowResult:
+        """Handle the settings options."""
         if user_input is not None:
             # Save the options and conclude the options flow
             return self.async_create_entry(title="", data=user_input)
@@ -294,6 +308,65 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
         # Display or re-display the form with the current options as defaults
         return self.async_show_form(
-            step_id="init",
+            step_id="settings",
             data_schema=data_schema,
+        )
+
+    async def async_step_discover_vehicles(self, user_input=None) -> FlowResult:
+        """Discover and select vehicles."""
+        if user_input is not None and user_input.get("vin"):
+            # Update the config entry with the selected VIN
+            self.hass.config_entries.async_update_entry(
+                self.config_entry,
+                data={CONFIG_VIN_KEY: user_input["vin"]},
+            )
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+            return self.async_create_entry(title="", data=self.config_entry.options)
+
+        # Load tokens and discover VINs
+        token_storage = get_token_storage(self.hass)
+        tokens = await token_storage.async_load() or {}
+        refresh_token = tokens.get(STORAGE_REFRESH_TOKEN_KEY)
+        ccc_token = tokens.get(STORAGE_CCC_TOKEN_KEY)
+
+        if not refresh_token:
+            return self.async_abort(reason="no_tokens")
+
+        # Get fresh tokens
+        async with aiohttp.ClientSession() as session:
+            access_token, new_refresh_token, id_token = await refresh_access_token(
+                refresh_token, session
+            )
+            if not access_token or not id_token:
+                return self.async_abort(reason="token_refresh_failed")
+
+            # Update refresh token if changed
+            if new_refresh_token:
+                tokens[STORAGE_REFRESH_TOKEN_KEY] = new_refresh_token
+                await token_storage.async_save(tokens)
+
+        # Decode user ID from token
+        claims = decode_jwt_token(id_token)
+        user_id = claims.get("snowflakeId")
+
+        if not ccc_token or not user_id:
+            return self.async_abort(reason="missing_user_info")
+
+        # Discover VINs
+        vins = await get_user_vins(ccc_token, user_id)
+
+        if not vins:
+            return self.async_abort(reason="no_vins_found")
+
+        # Create form to select VIN
+        data_schema = vol.Schema(
+            {
+                vol.Required("vin"): vol.In({vin: vin for vin in vins}),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="discover_vehicles",
+            data_schema=data_schema,
+            description_placeholders={"vin_count": str(len(vins))},
         )

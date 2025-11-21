@@ -433,14 +433,21 @@ async def get_user_vins(ccc_token: str, user_id: str) -> list[str]:
         "Content-Type": "application/json",
     }
 
+    _LOGGER.debug(f"Requesting VINs from URL: {url}")
+    _LOGGER.debug(f"Using user_id: {user_id}")
+    _LOGGER.debug(f"CCC token length: {len(ccc_token) if ccc_token else 0}")
+
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, headers=headers, ssl=False) as response:
+                _LOGGER.debug(f"VIN retrieval response status: {response.status}")
                 if response.status == 200:
                     data = await response.json()
+                    _LOGGER.debug(f"VIN retrieval response data: {data}")
                     # Extract VINs from the response (roles array)
                     vins = []
                     roles = data.get("roles", [])
+                    _LOGGER.debug(f"Roles array: {roles}")
                     for role in roles:
                         vin = role.get("vin")
                         if vin:
@@ -448,10 +455,11 @@ async def get_user_vins(ccc_token: str, user_id: str) -> list[str]:
                     _LOGGER.debug(f"Found {len(vins)} VINs for user {user_id}")
                     return vins
                 else:
+                    response_text = await response.text()
                     _LOGGER.error(
-                        f"Failed to retrieve VINs. Status code: {response.status}"
+                        f"Failed to retrieve VINs. Status code: {response.status}, Response: {response_text}"
                     )
     except Exception as e:
-        _LOGGER.error(f"Error retrieving VINs: {e}")
+        _LOGGER.error(f"Error retrieving VINs: {e}", exc_info=True)
 
     return []
