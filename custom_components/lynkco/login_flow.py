@@ -107,8 +107,11 @@ async def get_tokens_from_redirect_uri(
 ) -> tuple[str | None, str | None, str | None]:
     """Extract access and refresh tokens from a redirect URI."""
 
+    _LOGGER.debug(f"get_tokens_from_redirect_uri: Parsing URI: {uri}")
     parsed_url = urllib.parse.urlparse(uri)
+    _LOGGER.debug(f"get_tokens_from_redirect_uri: Query string: {parsed_url.query}")
     code = urllib.parse.parse_qs(parsed_url.query).get("code", [None])[0]
+    _LOGGER.debug(f"get_tokens_from_redirect_uri: Extracted code exists: {code is not None}")
 
     access_token, refresh_token, id_token = await getTokens(
         code,
@@ -411,6 +414,9 @@ async def getTokens(code, code_verifier, session):
 
     url = f"{login_b2c_url}oauth2/v2.0/token"
 
+    _LOGGER.debug(f"getTokens: Requesting tokens from {url}")
+    _LOGGER.debug(f"getTokens: code exists: {code is not None}, code_verifier exists: {code_verifier is not None}")
+
     async with session.post(url, data=data, headers=headers) as response:
         if response.status == 200:
             json_response = await response.json()
@@ -420,7 +426,10 @@ async def getTokens(code, code_verifier, session):
 
             return access_token, refresh_token, id_token
         else:
+            response_text = await response.text()
             _LOGGER.error(f"Failed to obtain tokens. Status code: {response.status}")
+            _LOGGER.error(f"Response body: {response_text}")
+            _LOGGER.debug(f"Request data keys: {list(data.keys())}")
     return None, None, None
 
 
