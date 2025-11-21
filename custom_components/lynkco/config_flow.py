@@ -323,29 +323,53 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             await self.hass.config_entries.async_reload(self.config_entry.entry_id)
             return self.async_create_entry(title="", data=self.config_entry.options)
 
-        # Load tokens and discover VINs
+        # Load tokens
         token_storage = get_token_storage(self.hass)
         tokens = await token_storage.async_load() or {}
         refresh_token = tokens.get(STORAGE_REFRESH_TOKEN_KEY)
-        ccc_token = tokens.get(STORAGE_CCC_TOKEN_KEY)
 
         if not refresh_token:
             return self.async_abort(reason="no_tokens")
 
-        # Get fresh tokens
-        async with aiohttp.ClientSession() as session:
-            access_token, new_refresh_token, id_token = await refresh_access_token(
-                refresh_token, session
-            )
-            if not access_token or not id_token:
-                return self.async_abort(reason="token_refresh_failed")
+        # Refresh tokens and get new access token and id_token
+        headers = {
+            "user-agent": "LynkCo/3016 CFNetwork/1492.0.1 Darwin/23.3.0",
+            "accept": "application/json",
+            "content-type": "application/x-www-form-urlencoded",
+        }
+        data = {
+            "refresh_token": refresh_token,
+            "grant_type": "refresh_token",
+        }
 
-            # Update refresh token if changed
-            if new_refresh_token:
-                tokens[STORAGE_REFRESH_TOKEN_KEY] = new_refresh_token
-                await token_storage.async_save(tokens)
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+            async with session.post(
+                "https://login.lynkco.com/dc6c7c0c-5ba7-414a-a7d1-d62ca1f73d13/b2c_1a_signin_mfa/oauth2/v2.0/token",
+                headers=headers,
+                data=data,
+            ) as response:
+                if response.status != 200:
+                    return self.async_abort(reason="token_refresh_failed")
 
-        # Decode user ID from token
+                token_response = await response.json()
+                access_token = token_response.get("access_token")
+                id_token = token_response.get("id_token")
+                new_refresh_token = token_response.get("refresh_token")
+
+                if not access_token or not id_token:
+                    return self.async_abort(reason="token_refresh_failed")
+
+                # Update refresh token if changed
+                if new_refresh_token:
+                    tokens[STORAGE_REFRESH_TOKEN_KEY] = new_refresh_token
+
+                # Get CCC token
+                ccc_token = await send_device_login(access_token)
+                if ccc_token:
+                    tokens[STORAGE_CCC_TOKEN_KEY] = ccc_token
+                    await token_storage.async_save(tokens)
+
+        # Decode user ID from id_token
         claims = decode_jwt_token(id_token)
         user_id = claims.get("snowflakeId")
 
