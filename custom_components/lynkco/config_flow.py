@@ -143,11 +143,19 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle the redirect login flow."""
         errors = {}
 
+        # Only generate auth URL and code_verifier on first visit (not on retry)
+        if "login_code_verifier" not in self.context:
+            auth_url, code_verifier, _ = get_auth_uri()
+            self.context["login_code_verifier"] = code_verifier
+            self.context["login_auth_url"] = auth_url
+        else:
+            auth_url = self.context.get("login_auth_url")
+            code_verifier = self.context.get("login_code_verifier")
+
         if user_input:
             redirect_uri = user_input.get(CONFIG_REDIRECT_URI_KEY)
-            login_code_verifier = self.context.get("login_code_verifier")
 
-            if redirect_uri and login_code_verifier:
+            if redirect_uri and code_verifier:
                 if not is_valid_redirect_uri(redirect_uri):
                     errors["redirect_uri"] = "invalid_redirect_uri"
                 else:
@@ -157,7 +165,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             refresh_token,
                             id_token,
                         ) = await get_tokens_from_redirect_uri(
-                            redirect_uri, login_code_verifier, session
+                            redirect_uri, code_verifier, session
                         )
 
                     if access_token and refresh_token and id_token:
@@ -167,9 +175,6 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     errors["base"] = "login_failed"
             else:
                 errors["base"] = "missing_details"
-
-        auth_url, code_verifier, _ = get_auth_uri()
-        self.context["login_code_verifier"] = code_verifier
 
         return self.async_show_form(
             step_id="redirect_login",
