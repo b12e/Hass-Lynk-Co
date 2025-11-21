@@ -328,7 +328,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         tokens = await token_storage.async_load() or {}
         refresh_token = tokens.get(STORAGE_REFRESH_TOKEN_KEY)
 
+        _LOGGER.debug(f"Discover vehicles: tokens loaded, refresh_token exists: {refresh_token is not None}")
+
         if not refresh_token:
+            _LOGGER.error("No refresh token found in storage")
             return self.async_abort(reason="no_tokens")
 
         # Refresh tokens and get new access token and id_token
@@ -342,21 +345,30 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             "grant_type": "refresh_token",
         }
 
+        _LOGGER.debug("Attempting to refresh tokens for vehicle discovery")
+
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
             async with session.post(
-                "https://login.lynkco.com/dc6c7c0c-5ba7-414a-a7d1-d62ca1f73d13/b2c_1a_signin_mfa/oauth2/v2.0/token",
+                "https://login.lynkco.com/lynkcoprod.onmicrosoft.com/b2c_1a_signin_mfa/oauth2/v2.0/token",
                 headers=headers,
                 data=data,
             ) as response:
+                _LOGGER.debug(f"Token refresh response status: {response.status}")
                 if response.status != 200:
+                    response_text = await response.text()
+                    _LOGGER.error(f"Token refresh failed. Status: {response.status}, Response: {response_text}")
                     return self.async_abort(reason="token_refresh_failed")
 
                 token_response = await response.json()
+                _LOGGER.debug(f"Token refresh response keys: {list(token_response.keys())}")
                 access_token = token_response.get("access_token")
                 id_token = token_response.get("id_token")
                 new_refresh_token = token_response.get("refresh_token")
 
+                _LOGGER.debug(f"Tokens extracted - access_token exists: {access_token is not None}, id_token exists: {id_token is not None}")
+
                 if not access_token or not id_token:
+                    _LOGGER.error(f"Missing tokens in response. access_token: {access_token is not None}, id_token: {id_token is not None}")
                     return self.async_abort(reason="token_refresh_failed")
 
                 # Update refresh token if changed
