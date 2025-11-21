@@ -86,7 +86,7 @@ async def refresh_tokens(hass):
         connector=aiohttp.TCPConnector(ssl=False)
     ) as session:
         async with session.post(
-            "https://login.lynkco.com/dc6c7c0c-5ba7-414a-a7d1-d62ca1f73d13/b2c_1a_signin_mfa/oauth2/v2.0/token",
+            "https://login.lynkco.com/lynkcoprod.onmicrosoft.com/b2c_1a_signin_mfa/oauth2/v2.0/token",
             headers=headers,
             data=data,
         ) as response:
