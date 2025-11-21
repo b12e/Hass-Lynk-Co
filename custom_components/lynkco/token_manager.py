@@ -86,7 +86,7 @@ async def refresh_tokens(hass):
         connector=aiohttp.TCPConnector(ssl=False)
     ) as session:
         async with session.post(
-            "https://login.lynkco.com/lynkcoprod.onmicrosoft.com/b2c_1a_signin_mfa/oauth2/v2.0/token",
+            "https://login.lynkco.com/dc6c7c0c-5ba7-414a-a7d1-d62ca1f73d13/b2c_1a_signin_mfa/oauth2/v2.0/token",
             headers=headers,
             data=data,
         ) as response:
@@ -134,21 +134,20 @@ async def send_device_login(access_token: str):
         "api-version": "1",
     }
     data = {"deviceUuid": str(uuid.uuid4()), "isLogin": True}
-    async with aiohttp.ClientSession(
-        connector=aiohttp.TCPConnector(ssl=False)
-    ) as session:
-        async with session.post(
+    async with (
+        aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session,
+        session.post(
             "https://iam-service-prod.westeurope.cloudapp.azure.com/validate-session",
             headers=headers,
             json=data,
-        ) as response:
-            if response.status == 200:
-                ccc_token = (await response.json())["cccToken"]
-                return ccc_token
-            else:
-                _LOGGER.error(
-                    f"Failed to send device login, status: {response.status}, response: {await response.text()}"
-                )
+        ) as response,
+    ):
+        if response.status == 200:
+            data = await response.json()
+            return data["cccToken"]
+        _LOGGER.error(
+            f"Failed to send device login, status: {response.status}, response: {await response.text()}"
+        )
     return None
 
 
@@ -163,24 +162,24 @@ async def get_user_id(hass, ccc_token, vin):
         "content-type": "application/json",
         "Authorization": f"Bearer {ccc_token}",
     }
-    async with aiohttp.ClientSession(
-        connector=aiohttp.TCPConnector(ssl=False)
-    ) as session:
-        async with session.get(
+    async with (
+        aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session,
+        session.get(
             f"https://delegated-driver-tls.aion.connectedcar.cloud/delegated-driver/api/delegateddriver/v1/vehicle/{vin}/drivers",
             headers=headers,
-        ) as response:
-            if response.status == 200:
-                response_json = await response.json()
-                if response_json["drivers"]:
-                    user_id = response_json["drivers"][0]["userId"]
-                    tokens[STORAGE_USER_ID_KEY] = user_id
-                    await token_storage.async_save(tokens)
-                    return user_id
-                else:
-                    _LOGGER.error("No drivers found in response")
+        ) as response,
+    ):
+        if response.status == 200:
+            response_json = await response.json()
+            if response_json["drivers"]:
+                user_id = response_json["drivers"][0]["userId"]
+                tokens[STORAGE_USER_ID_KEY] = user_id
+                await token_storage.async_save(tokens)
+                return user_id
             else:
-                _LOGGER.error(
-                    f"Failed to get user id, status: {response.status}, response: {await response.text()}"
-                )
+                _LOGGER.error("No drivers found in response")
+        else:
+            _LOGGER.error(
+                f"Failed to get user id, status: {response.status}, response: {await response.text()}"
+            )
     return None

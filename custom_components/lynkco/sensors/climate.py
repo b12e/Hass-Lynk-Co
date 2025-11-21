@@ -1,19 +1,14 @@
-from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
-from homeassistant.const import UnitOfTemperature
 from .lynk_co_sensor import LynkCoSensor
-from .lynk_co_statistics_sensor import LynkCoStatisticsSensor
 
 
 def create_sensors(coordinator, vin):
     sensors = [
-        LynkCoStatisticsSensor(
+        LynkCoSensor(
             coordinator,
             vin,
             "Lynk & Co Interior Temperature",
             "vehicle_record.climate.interiorTemp.temp",
-            UnitOfTemperature.CELSIUS,
-            device_class=SensorDeviceClass.TEMPERATURE,
-            state_class=SensorStateClass.MEASUREMENT,
+            "°C",
         ),
         LynkCoSensor(
             coordinator,
@@ -33,14 +28,12 @@ def create_sensors(coordinator, vin):
             "Lynk & Co Climate Updated",
             "vehicle_record.climate.vehicleUpdatedAt",
         ),
-        LynkCoStatisticsSensor(
+        LynkCoSensor(
             coordinator,
             vin,
             "Lynk & Co Exterior temperature",
             "vehicle_record.climate.exteriorTemp.temp",
-            UnitOfTemperature.CELSIUS,
-            device_class=SensorDeviceClass.TEMPERATURE,
-            state_class=SensorStateClass.MEASUREMENT,
+            "°C",
         ),
         LynkCoSensor(
             coordinator,

@@ -1,18 +1,14 @@
-from homeassistant.components.sensor import SensorStateClass
-from homeassistant.const import UnitOfVolume, UnitOfLength
 from .lynk_co_sensor import LynkCoSensor
-from .lynk_co_statistics_sensor import LynkCoStatisticsSensor
 
 
 def create_sensors(coordinator, vin):
     sensors = [
-        LynkCoStatisticsSensor(
+        LynkCoSensor(
             coordinator,
             vin,
             "Lynk & Co Fuel Level",
             "vehicle_record.fuel.level",
-            UnitOfVolume.LITERS,
-            state_class=SensorStateClass.MEASUREMENT,
+            "liters",
         ),
         LynkCoSensor(
             coordinator,
@@ -32,29 +28,26 @@ def create_sensors(coordinator, vin):
             "Lynk & Co Fuel Type",
             "vehicle_record.fuel.fuelType",
         ),
-        LynkCoStatisticsSensor(
+        LynkCoSensor(
             coordinator,
             vin,
             "Lynk & Co Fuel distance",
             "vehicle_record.fuel.distanceToEmpty",
-            UnitOfLength.KILOMETERS,
-            state_class=SensorStateClass.MEASUREMENT,
+            "km",
         ),
-        LynkCoStatisticsSensor(
+        LynkCoSensor(
             coordinator,
             vin,
             "Lynk & Co Fuel avg consumption",
             "vehicle_record.fuel.averageConsumption",
             "L/100km",
-            state_class=SensorStateClass.MEASUREMENT,
         ),
-        LynkCoStatisticsSensor(
+        LynkCoSensor(
             coordinator,
             vin,
             "Lynk & Co Fuel avg consumption latest cycle",
             "vehicle_record.fuel.averageConsumptionLatestDrivingCycle",
             "L/100km",
-            state_class=SensorStateClass.MEASUREMENT,
         ),
         LynkCoSensor(
             coordinator,

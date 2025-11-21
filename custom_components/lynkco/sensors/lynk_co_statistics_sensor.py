@@ -1,8 +1,7 @@
-import logging
+"""Lynk & Co sensor with long-term statistics support."""
 from homeassistant.components.sensor import SensorDeviceClass, SensorStateClass
-from .lynk_co_sensor import LynkCoSensor
 
-_LOGGER = logging.getLogger(__name__)
+from .lynk_co_sensor import LynkCoSensor
 
 
 class LynkCoStatisticsSensor(LynkCoSensor):
@@ -19,6 +18,7 @@ class LynkCoStatisticsSensor(LynkCoSensor):
         device_class=None,
         state_class=SensorStateClass.MEASUREMENT,
     ):
+        """Initialize the statistics sensor."""
         super().__init__(
             coordinator, vin, name, data_path, unit_of_measurement, state_mapping
         )
@@ -27,8 +27,10 @@ class LynkCoStatisticsSensor(LynkCoSensor):
 
     @property
     def device_class(self):
+        """Return the device class."""
         return self._attr_device_class
 
     @property
     def state_class(self):
+        """Return the state class."""
         return self._attr_state_class
