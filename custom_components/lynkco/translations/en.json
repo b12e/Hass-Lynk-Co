@@ -9,6 +9,7 @@
       "invalid_redirect_uri": "The provided redirect URI is invalid. Please check and try again.",
       "invalid_email": "The provided email is invalid. Please check and try again.",
       "invalid_2fa_code": "The provided 2FA code is invalid. Please check and try again.",
+      "invalid_vin": "The provided VIN is invalid. VIN must be exactly 17 alphanumeric characters.",
       "login_failed": "Login failed. Please check your credentials and try again."
     },
     "step": {
@@ -47,6 +48,13 @@
       "reauth": {
         "title": "Re-authentication Required",
         "description": "Please re-enter your credentials to re-authenticate."
+      },
+      "manual_vin": {
+        "title": "Manual VIN Entry",
+        "description": "{info}",
+        "data": {
+          "vin": "Vehicle VIN (17 characters)"
+        }
       }
     }
   },

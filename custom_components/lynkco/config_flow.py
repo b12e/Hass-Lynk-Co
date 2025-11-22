@@ -110,11 +110,15 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         vins = await get_user_vins(ccc_token, user_id) if ccc_token and user_id else []
         _LOGGER.error(f"[VIN DISCOVERY] Retrieved VINs from API: {vins}")
 
+        # If no VINs found, store tokens and show manual VIN entry form
+        if not vins:
+            _LOGGER.error("[VIN DISCOVERY] No VINs found for the user - prompting for manual entry")
+            # Store tokens for later use
+            self.context["tokens_stored"] = True
+            return await self.async_step_manual_vin()
+
         # For simplicity, we take the first VIN
-        vin = vins[0] if vins else None
-        if not vin:
-            _LOGGER.error("[VIN DISCOVERY] No VINs found for the user - check the API response logs above")
-            return self.async_abort(reason="no_vins_found")
+        vin = vins[0]
 
         if hasattr(self, "_reauth_entry"):
             # Update the existing config entry
@@ -127,10 +131,55 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # Create new entry
         return self.async_create_entry(
-            title="Lynk & Co",
+            title=f"Lynk & Co ({vin})",
             data={CONFIG_VIN_KEY: vin},
             description_placeholders={
                 "additional_configuration": "Please use the configuration to enable experimental features."
+            },
+        )
+
+    async def async_step_manual_vin(self, user_input=None):
+        """Handle manual VIN entry when automatic discovery fails."""
+        errors = {}
+
+        if user_input is not None:
+            vin = user_input.get(CONFIG_VIN_KEY, "").strip().upper()
+
+            # Basic VIN validation (17 characters, alphanumeric except I, O, Q)
+            if len(vin) == 17 and vin.replace("-", "").replace(" ", "").isalnum():
+                # Remove any spaces or hyphens
+                vin = vin.replace("-", "").replace(" ", "")
+
+                if hasattr(self, "_reauth_entry"):
+                    # Update the existing config entry
+                    self.hass.config_entries.async_update_entry(
+                        self._reauth_entry,
+                        data={CONFIG_VIN_KEY: vin},
+                    )
+                    await self.hass.config_entries.async_reload(self._reauth_entry.entry_id)
+                    return self.async_abort(reason="reauth_successful")
+
+                # Create new entry with manually entered VIN
+                return self.async_create_entry(
+                    title=f"Lynk & Co ({vin})",
+                    data={CONFIG_VIN_KEY: vin},
+                    description_placeholders={
+                        "additional_configuration": "Please use the configuration to enable experimental features."
+                    },
+                )
+            else:
+                errors["vin"] = "invalid_vin"
+
+        return self.async_show_form(
+            step_id="manual_vin",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONFIG_VIN_KEY): str,
+                }
+            ),
+            errors=errors,
+            description_placeholders={
+                "info": "Automatic VIN discovery failed. Please enter your vehicle's VIN manually. You can find the VIN on your vehicle registration, insurance documents, or inside your vehicle."
             },
         )
 
