@@ -96,14 +96,24 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         # Decode User ID from ID Token (the JWT payload)
         claims = decode_jwt_token(id_token)
+        _LOGGER.error(f"[VIN DISCOVERY] JWT claims: {claims}")
         user_id = claims.get("snowflakeId")
+        _LOGGER.error(f"[VIN DISCOVERY] Extracted user_id: {user_id}")
+        _LOGGER.error(f"[VIN DISCOVERY] CCC token exists: {ccc_token is not None}, length: {len(ccc_token) if ccc_token else 0}")
 
         # Retrieve VINs by querying the API
+        if not ccc_token:
+            _LOGGER.error("[VIN DISCOVERY] CCC token is None, cannot retrieve VINs")
+        if not user_id:
+            _LOGGER.error("[VIN DISCOVERY] User ID is None, cannot retrieve VINs")
+
         vins = await get_user_vins(ccc_token, user_id) if ccc_token and user_id else []
+        _LOGGER.error(f"[VIN DISCOVERY] Retrieved VINs from API: {vins}")
+
         # For simplicity, we take the first VIN
         vin = vins[0] if vins else None
         if not vin:
-            _LOGGER.error("No VINs found for the user")
+            _LOGGER.error("[VIN DISCOVERY] No VINs found for the user - check the API response logs above")
             return self.async_abort(reason="no_vins_found")
 
         if hasattr(self, "_reauth_entry"):

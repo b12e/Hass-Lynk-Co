@@ -362,27 +362,41 @@ async def getTokens(
 
 async def get_user_vins(ccc_token: str, user_id: str) -> list[str]:
     """Fetch a list of VINs associated with the logged in user."""
+    url = f"{user_lifecycle_base_url}{user_id}/activevehicles"
     headers = {
         "Authorization": f"Bearer {ccc_token}",
         "Content-Type": "application/json",
     }
 
+    _LOGGER.error(f"[VIN API] Requesting VINs from: {url}")
+    _LOGGER.error(f"[VIN API] User ID: {user_id}")
+    _LOGGER.error(f"[VIN API] CCC token length: {len(ccc_token) if ccc_token else 0}")
+
     try:
         async with (
             aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session,
             session.get(
-                f"{user_lifecycle_base_url}{user_id}/activevehicles",
+                url,
                 headers=headers,
             ) as response,
         ):
+            _LOGGER.error(f"[VIN API] Response status: {response.status}")
+            response_text = await response.text()
+            _LOGGER.error(f"[VIN API] Response body: {response_text}")
+
             if response.status == 200:
                 data = await response.json()
-                return [role["vin"] for role in data.get("roles", []) if "vin" in role]
+                _LOGGER.error(f"[VIN API] Parsed JSON response: {data}")
+                roles = data.get("roles", [])
+                _LOGGER.error(f"[VIN API] Roles array: {roles}")
+                vins = [role["vin"] for role in roles if "vin" in role]
+                _LOGGER.error(f"[VIN API] Extracted VINs: {vins}")
+                return vins
             _LOGGER.error(
-                f"Failed to fetch user lifecycle data, HTTP status: {response.status}, response: {await response.text()}"
+                f"[VIN API] Failed to fetch user lifecycle data, HTTP status: {response.status}"
             )
     except Exception as error:
         _LOGGER.error(
-            "Exception occurred while fetching user lifecycle data: %s", str(error)
+            "[VIN API] Exception occurred while fetching user lifecycle data: %s", str(error), exc_info=True
         )
     return []
